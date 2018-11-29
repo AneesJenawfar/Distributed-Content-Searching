@@ -1,0 +1,24 @@
+th {
+    text-align: center;
+    font-size: medium;
+}
+th {
+    border-left: 2px solid #43408b;
+    border-right: 2px solid #4a868b;
+    border-top: 3px solid #16088b;
+    border-bottom: 3px solid #575f8b;
+}
+td {
+    font-size: small;
+    border-left: 2px solid #102364;
+    border-right: 2px solid #101a64;
+    border-top: 2px solid #1f4664;
+    border-bottom: 2px solid #2a6461;
+}
+tr:hover {background-color: #31708f}
+tr:nth-child(even) {background-color: #f2f2f2}
+tr:nth-child(odd) {background-color: beige}
+th {
+    background-color: #7e9caf;
+    color: white;
+}

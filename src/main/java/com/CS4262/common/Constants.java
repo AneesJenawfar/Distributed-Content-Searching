@@ -1,4 +1,4 @@
-package com.CS4262;
+package com.CS4262.common;
 
 public class Constants {
 
@@ -12,7 +12,14 @@ public class Constants {
 
     public static final String REGOK = "REGOK";
     public static final String UNROK = "UNROK";
-
+    public static final String JOIN = "JOIN";
+    public static final String JOINOK = "JOINOK";
+    public static final String LEAVE = "LEAVE";
+    public static final String LEAVEOK = "LEAVEOK";
+    public static final String ALIVE = "AVE";
+    public static final String AVEOK = "AVEOK";
+    public static final String SEARCH = "SER";
+    public static final String SEROK = "SEROK";
     public static final int TIMEOUT_REG = 10000;
 
     public static final int MIN_NEIGHBOURS = 2;

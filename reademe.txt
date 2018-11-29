@@ -1,0 +1,20 @@
+Team members:
+    140033P Anees
+    140306G Krishanth
+    140494D Ramiya
+
+This is a distributed file sharing system.
+Up to now we have implemented that create a node object and register with bootstrap server.
+
+1. Compile the and run the server file in the directory
+    ~/DistributedContentSearching/resources/Bootstrap Server/Java/BootstrapServer.java
+    In the ~/DistributedContentSearching/resources/Bootstrap Server/Java directory open the terminal
+    Run the following codes
+        Compilation : javac BootstrapServer.java
+        Run         : java BootstrapServer
+2. Open the pom.xml file from Intellij IDEA.
+3. Run the ~/DistributedContentSearching/src/main/java/com/CS4262/App.java file
+    It will create and register 10 node objects with the server you ran in step 1
+    results will be shown in Intellij IDEA terminal.
+
+

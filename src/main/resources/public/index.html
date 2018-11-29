@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title> Distributed Search</title>
+    <link rel="stylesheet" href="table.css" type="text/css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="main.js"></script>
+</head>
+<body>
+
+<h1>Distributed System Search</h1>
+
+<div class="container col-xs-3">
+    <form>
+        <label for="serverIP">ServerIP :</label>
+        <input type="text" id="serverIP" class="form-control"/>
+        <br>
+        <label for="serverPort">ServerPort:</label>
+        <input type="number" id="serverPort" class="form-control"/>
+        <br>
+        <label for="nodeIP">NodeIP :</label>
+        <input type="text" id="nodeIP" class="form-control"/>
+        <br>
+        <label for="nodePort">NodePort :</label>
+        <input type="text" id="nodePort" class="form-control"/>
+        <br>
+        <label for="userName">UserName:</label>
+        <input type="text" id="userName" class="form-control"/>
+        <br>
+        <input type="hidden" id="isRegistered" class="form-control"/>
+        <br>
+        <input type="button" id="registerButton" value="Register" class="form-control btn-primary"/>
+        <br>
+    </form>
+
+</div>
+
+<div class="container col-xs-3">
+<h4> Available Files </h4>
+<table id="files">
+<tr>
+<th> Files</th>
+</tr>
+</table>
+<br>
+<br>
+<table id="peers">
+<h4> Available Peers </h4>
+<tr>
+<th> Peer IP</th>
+<th> Peer Port</th>
+</tr>
+</table>
+</div>
+<div class="container col-xs-3">
+    <br>
+    <label for="search">Search:</label>
+    <input type="text" id="search" class="form-control"/>
+    <br>
+    <input type="button" id="searchButton" value="Search" class="form-control btn-primary"/>
+
+    <br>
+    <table id="results">
+    <h4> Search Results </h4>
+    <tr>
+    <th> Owner IP</th>
+    <th> Owner Port</th>
+    <th> Files</th>
+    <th> No of Hops</th>
+    </tr>
+    </table>
+</div>
+
+<div class="container col-xs-3">
+    <br>
+    <br>
+    <div>
+        <input type="button" id="fileButton" value="Print Files" class="form-control btn-info"/>
+    </div>
+    <br>
+    <br>
+    <div>
+        <input type="button" id="peerButton" value="Print Peers" class="form-control btn-info"/>
+    </div>
+    <br>
+    <br>
+    <div>
+        <input type="button" id="resultButton" value="Print Results" class="form-control btn-info"/>
+    </div>
+
+    <br>
+    <br>
+    <div>
+        <input type="button" id="checkButton" value="Check Peers" class="form-control btn-info"/>
+    </div>
+    <br>
+    <br>
+    <div>
+        <input type="button" id="runQueryButton" value="Run Queries" class="form-control btn-info"/>
+    </div>
+
+    <br>
+    <br>
+    <div>
+        <input type="button" id="printStats" value="Print Stats" class="form-control btn-info"/>
+    </div>
+    <br>
+    <br>
+    <div>
+        <input type="button" id="killButton" value="Kill" class="form-control btn-danger"/>
+    </div>
+</div>
+</body>
+</html>
