@@ -1,6 +1,6 @@
 package com.CS4262.store;
 
-import com.google.gson.Gson;
+//import com.google.gson.Gson;
 
 import java.util.List;
 import java.util.UUID;
@@ -71,8 +71,8 @@ public class Queries {
         this.noOfHops = noOfHops;
     }
 
-    @Override
-    public String toString() {
-        return new Gson().toJson(this);
-    }
+//    @Override
+//    public String toString() {
+//        return new Gson().toJson(this);
+//    }
 }

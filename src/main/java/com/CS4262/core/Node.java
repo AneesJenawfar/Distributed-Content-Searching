@@ -1,7 +1,7 @@
 package com.CS4262.core;
 
 import com.CS4262.common.Constants;
-import com.google.gson.Gson;
+//import com.google.gson.Gson;
 
 import java.io.IOException;
 import java.net.*;
@@ -91,10 +91,10 @@ public class Node {
         return result;
     }
 
-    @Override
-    public String toString() {
-        return new Gson().toJson(this);
-    }
+//    @Override
+//    public String toString() {
+//        return new Gson().toJson(this);
+//    }
 
 //    private int getFreePort() {
 //        try (ServerSocket socket = new ServerSocket(0)) {

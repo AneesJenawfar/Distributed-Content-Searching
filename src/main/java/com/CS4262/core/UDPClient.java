@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.net.*;
 import java.util.*;
 
-import static spark.Spark.stop;
+//import static spark.Spark.stop;
 
 
 public class UDPClient {
@@ -314,11 +314,18 @@ public class UDPClient {
         t.start();
     }
 
+    public static void find(String query) throws Exception {
+        System.out.println("\nStarted time for searching " + query + " in millisec " + System.currentTimeMillis() );
+        UUID randomUUID = UUID.randomUUID();
+        sendUDP("SER " + randomUUID + " " + currentNode.getNodeIP() + " " + currentNode.getNodePort() + " " + query + " " + 0,currentNode);
+        getInstance().numOfSendMessages++;
+    }
+
     public static void sendUDP(String msg, Node node) throws IOException {
 
         synchronized (UDPClient.getInstance()) {
             msg = String.format("%04d", (msg.length() + 5)) + " " + msg;
-//            System.out.println("From sendUDP : "+msg);
+            System.out.println("From sendUDP : "+msg);
             DatagramSocket sock = new DatagramSocket();
             InetAddress node_address = InetAddress.getByName(node.getNodeIP());
             byte[] buffer = msg.getBytes();
@@ -333,6 +340,7 @@ public class UDPClient {
         StringTokenizer tokenizer = new StringTokenizer(msg, " ");
         tokenizer.nextToken();
         String command = tokenizer.nextToken();
+        System.out.println("received msg : "+msg);
         synchronized (peers) {
             if (Objects.equals(command, Constants.JOIN)) {
                 String NodeIP = tokenizer.nextToken();
@@ -370,6 +378,7 @@ public class UDPClient {
                 }
             }
             else if (Objects.equals(command, Constants.SEARCH)) {
+                System.out.println("Search found : " + msg);
                 String reply = "";
                 UUID uuid = UUID.fromString(tokenizer.nextToken());
                 getInstance().numOfReceivedMessages++;
@@ -398,7 +407,7 @@ public class UDPClient {
                 return reply;
             }else if (Objects.equals(command, Constants.SEROK)) {
                 getInstance().numOfReceivedMessages++;
-//                System.out.println("[INFO] : Search result Found");
+                System.out.println("[INFO] : Search result Found: "+msg);
                 UUID uuid = UUID.fromString(tokenizer.nextToken());
                 int noOfFiles = Integer.parseInt(tokenizer.nextToken());
                 String nodeIP = tokenizer.nextToken();
@@ -468,29 +477,23 @@ public class UDPClient {
         return reply;
     }
 
-    public synchronized boolean kill() throws Exception {
-        // make join request for peers....
-        askPeersToJoin();
-        stop();
-        return true;
-    }
-
-    public static void find(String query) throws Exception {
-        System.out.println("\nStarted time for searching " + query + " in millisec " + System.currentTimeMillis() );
-        UUID randomUUID = UUID.randomUUID();
-        sendUDP("SER " + randomUUID + " " + currentNode.getNodeIP() + " " + currentNode.getNodePort() + " " + query + " " + 0,currentNode);
-        getInstance().numOfSendMessages++;
-    }
+//    public synchronized boolean kill() throws Exception {
+//        // make join request for peers....
+//        askPeersToJoin();
+//        stop();
+//        return true;
+//    }
 
     public static synchronized String search(String query, Node detail, int hops, UUID randomUUID) throws Exception {
         String reply = "";
         List<String> results_current = getFiles().searchFile(query);
         if (results_current.size() > 0) {
-            StringBuilder result = new StringBuilder(" ");
+            StringBuilder result = new StringBuilder("");
             for (int j = 0; j < results_current.size(); j++) {
                 result.append(" ").append(results_current.get(j));
             }
-            reply = "SEROK " + randomUUID + " " + results_current.size() + " " + currentNode.getNodeIP() + " " + currentNode.getNodePort() + " " + hops + " " + result +
+            System.out.println("Result :"+result);
+            reply = "SEROK " + randomUUID + " " + results_current.size() + " " + currentNode.getNodeIP() + " " + currentNode.getNodePort() + " " + hops + result +
                     " " + detail.getNodeIP() + " " + detail.getNodePort();
             sendUDP(reply,detail);
             getInstance().numOfSendMessages++;

@@ -4,11 +4,11 @@ import com.CS4262.core.UDPClient;
 import com.CS4262.core.Node;
 import com.CS4262.common.Constants;
 import com.CS4262.common.FileCollection;
-
-import spark.QueryParamsMap;
-import spark.Request;
-import spark.Response;
-import spark.Route;
+//
+//import spark.QueryParamsMap;
+//import spark.Request;
+//import spark.Response;
+//import spark.Route;
 
 import java.io.IOException;
 import java.net.DatagramSocket;
@@ -20,11 +20,11 @@ import java.util.Random;
 import java.util.Scanner;
 import java.util.UUID;
 
-import static com.CS4262.util.ResponseUtil.json;
-import static spark.Spark.get;
-import static spark.Spark.port;
-import static spark.Spark.ipAddress;
-import static spark.Spark.staticFileLocation;
+//import static com.CS4262.util.ResponseUtil.json;
+//import static spark.Spark.get;
+//import static spark.Spark.port;
+//import static spark.Spark.ipAddress;
+//import static spark.Spark.staticFileLocation;
 
 public class App {
 
@@ -143,135 +143,135 @@ public class App {
         }
     }
 
-    public App() throws SocketException {
-        Random rand = new Random();
-        int nodePort = rand.nextInt(10000) + 10000;
-        port(nodePort);
-        instance.setReceivingPort(nodePort+2000);
-        System.out.println("listening port " + instance.getReceivingPort());
-        try (final DatagramSocket socket = new DatagramSocket()){
-            socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
-            String ip = socket.getLocalAddress().getHostAddress();
-            ipAddress(ip);
-            System.out.println("Web Interface : http://" + ip + ":" +nodePort);
-        } catch (Exception e){
-            throw new RuntimeException("Could not find host address");
-        }
-        instance.listening();
-
-        staticFileLocation("/public");
-        // registering call
-        get("/register", (req, res) -> {
-            QueryParamsMap map = req.queryMap();
-            try {
-                String serverIP = map.get("serverIP").value();
-                int serverPort = Integer.parseInt(map.get("serverPort").value());
-                String nodeIP = map.get("nodeIP").value();
-                String userName = map.get("userName").value();
-                String msg = "REG " + nodeIP + " " + instance.getReceivingPort() + " " + userName;
-                return instance.register(msg, serverIP, serverPort);
-            }
-            catch (Exception e){
-                return "Error: " + e.getMessage();
-            }
-        },json());
-
-        // getting files
-        get("/files", new Route() {
-            @Override
-            public Object handle(Request request, spark.Response response) throws Exception {
-                FileCollection files = FileCollection.getInstance();
-                UDPClient.printFiles();
-                return  files.getFiles();
-            }
-        },json());
-
-        // getting peers
-        get("/peers", new Route() {
-            @Override
-            public Object handle(Request request, spark.Response response) throws Exception {
-                UDPClient.printPeers();
-                return  UDPClient.getPeers();
-            }
-        },json());
-
-        // getting results
-        get("/results", new Route() {
-            @Override
-            public Object handle(Request request, spark.Response response) throws Exception {
-                UDPClient.printResults();
-                return  true;            }
-        },json());
-
-
-        // un registering
-        get("/unregister", new Route() {
-            @Override
-            public Object handle(Request request, Response response) throws Exception {
-                return instance.unregister();
-            }
-        },json());
-
-        // checking peer status
-        get("/check", new Route() {
-            @Override
-            public Object handle(Request request, Response response) throws Exception {
-                UDPClient.checkPeersAreAlive();
-                return  true;
-            }
-        },json());
-
-        // killing
-        get("/kill", new Route() {
-            @Override
-            public Object handle(Request request, Response response) throws Exception {
-                return instance.kill();
-            }
-        },json());
-
-
-        // find files
-        get("/findFiles", new Route() {
-            @Override
-            public Object handle(Request request, Response response) throws Exception {
-                QueryParamsMap map = request.queryMap();
-                try{
-                    String query = map.get("query").value();
-                    UDPClient.find(query);
-                }catch (Exception e){
-                    e.printStackTrace();
-                }
-                return Constants.SEROK;
-            }
-        });
-
-
-        // runQueries
-        get("/runQueries", new Route() {
-            @Override
-            public Object handle(Request request, Response response) throws Exception {
-                try{
-                    UDPClient.searchQueries();
-                }catch (Exception e){
-                    e.printStackTrace();
-                }
-                return Constants.SEROK;
-            }
-        });
-
-
-        // runQueries
-        get("/printStats", new Route() {
-            @Override
-            public Object handle(Request request, Response response) throws Exception {
-                try{
-                    UDPClient.printStats();
-                }catch (Exception e){
-                    e.printStackTrace();
-                }
-                return Constants.SEROK;
-            }
-        });
-    }
+//    public App() throws SocketException {
+//        Random rand = new Random();
+//        int nodePort = rand.nextInt(10000) + 10000;
+//        port(nodePort);
+//        instance.setReceivingPort(nodePort+2000);
+//        System.out.println("listening port " + instance.getReceivingPort());
+//        try (final DatagramSocket socket = new DatagramSocket()){
+//            socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+//            String ip = socket.getLocalAddress().getHostAddress();
+//            ipAddress(ip);
+//            System.out.println("Web Interface : http://" + ip + ":" +nodePort);
+//        } catch (Exception e){
+//            throw new RuntimeException("Could not find host address");
+//        }
+//        instance.listening();
+//
+//        staticFileLocation("/public");
+//        // registering call
+//        get("/register", (req, res) -> {
+//            QueryParamsMap map = req.queryMap();
+//            try {
+//                String serverIP = map.get("serverIP").value();
+//                int serverPort = Integer.parseInt(map.get("serverPort").value());
+//                String nodeIP = map.get("nodeIP").value();
+//                String userName = map.get("userName").value();
+//                String msg = "REG " + nodeIP + " " + instance.getReceivingPort() + " " + userName;
+//                return instance.register(msg, serverIP, serverPort);
+//            }
+//            catch (Exception e){
+//                return "Error: " + e.getMessage();
+//            }
+//        },json());
+//
+//        // getting files
+//        get("/files", new Route() {
+//            @Override
+//            public Object handle(Request request, spark.Response response) throws Exception {
+//                FileCollection files = FileCollection.getInstance();
+//                UDPClient.printFiles();
+//                return  files.getFiles();
+//            }
+//        },json());
+//
+//        // getting peers
+//        get("/peers", new Route() {
+//            @Override
+//            public Object handle(Request request, spark.Response response) throws Exception {
+//                UDPClient.printPeers();
+//                return  UDPClient.getPeers();
+//            }
+//        },json());
+//
+//        // getting results
+//        get("/results", new Route() {
+//            @Override
+//            public Object handle(Request request, spark.Response response) throws Exception {
+//                UDPClient.printResults();
+//                return  true;            }
+//        },json());
+//
+//
+//        // un registering
+//        get("/unregister", new Route() {
+//            @Override
+//            public Object handle(Request request, Response response) throws Exception {
+//                return instance.unregister();
+//            }
+//        },json());
+//
+//        // checking peer status
+//        get("/check", new Route() {
+//            @Override
+//            public Object handle(Request request, Response response) throws Exception {
+//                UDPClient.checkPeersAreAlive();
+//                return  true;
+//            }
+//        },json());
+//
+//        // killing
+//        get("/kill", new Route() {
+//            @Override
+//            public Object handle(Request request, Response response) throws Exception {
+//                return instance.kill();
+//            }
+//        },json());
+//
+//
+//        // find files
+//        get("/findFiles", new Route() {
+//            @Override
+//            public Object handle(Request request, Response response) throws Exception {
+//                QueryParamsMap map = request.queryMap();
+//                try{
+//                    String query = map.get("query").value();
+//                    UDPClient.find(query);
+//                }catch (Exception e){
+//                    e.printStackTrace();
+//                }
+//                return Constants.SEROK;
+//            }
+//        });
+//
+//
+//        // runQueries
+//        get("/runQueries", new Route() {
+//            @Override
+//            public Object handle(Request request, Response response) throws Exception {
+//                try{
+//                    UDPClient.searchQueries();
+//                }catch (Exception e){
+//                    e.printStackTrace();
+//                }
+//                return Constants.SEROK;
+//            }
+//        });
+//
+//
+//        // runQueries
+//        get("/printStats", new Route() {
+//            @Override
+//            public Object handle(Request request, Response response) throws Exception {
+//                try{
+//                    UDPClient.printStats();
+//                }catch (Exception e){
+//                    e.printStackTrace();
+//                }
+//                return Constants.SEROK;
+//            }
+//        });
+//    }
 
 }
