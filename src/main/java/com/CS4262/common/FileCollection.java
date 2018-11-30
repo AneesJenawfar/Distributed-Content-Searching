@@ -1,17 +1,26 @@
 package com.CS4262.common;
 
+import com.CS4262.ftp.SendingData;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.logging.Logger;
 
 public class FileCollection {
     private List<String> files = new ArrayList<String>();
 
     private static FileCollection instance;
 
+    private final Logger LOG = Logger.getLogger(SendingData.class.getName());
 
-    private FileCollection() {
+    private String userName;
+
+    private FileCollection(String userName) {
 
         List<String> list = new ArrayList<>();
         List<String> files = new ArrayList<String>();
@@ -37,6 +46,7 @@ public class FileCollection {
         list.add("American Idol");
         list.add("Hacking for Dummies");
 
+        this.userName= userName;
 
         // do shuffling to avoid getting same file again
         Collections.shuffle(list);
@@ -45,15 +55,16 @@ public class FileCollection {
         int num = rand.nextInt(2) + 3;
         for (int i = 0; i < num; i++) {
             files.add(list.get(i).replace(" ", "-"));
+            createFile(list.get(i).replace(" ", "-"));
         }
         this.files = files;
     }
 
-    public static FileCollection getInstance() {
+    public static FileCollection getInstance(String userName) {
         if (instance == null) {
             synchronized (FileCollection.class) {
                 if (instance == null) {
-                    instance = new FileCollection();
+                    instance = new FileCollection(userName);
                 }
             }
         }
@@ -82,5 +93,23 @@ public class FileCollection {
     @Override
     public String toString() {
         return files.toString();
+    }
+
+    public void createFile(String fileName) {
+        try {
+            String fileSeparator = System.getProperty("file.separator");
+            String absoluteFilePath = "." + fileSeparator + this.userName + fileSeparator + fileName;
+            File file = new File(absoluteFilePath);
+            file.getParentFile().mkdir();
+            if (file.createNewFile()) {
+//                LOG.info(absoluteFilePath + " File Created");
+            } else LOG.info("File " + absoluteFilePath + " already exists");
+
+            RandomAccessFile r = new RandomAccessFile(file, "rw");
+            r.setLength(1024 * 1024 * 10);
+//            return file;
+        } catch (IOException e){
+            e.printStackTrace();
+        }
     }
 }

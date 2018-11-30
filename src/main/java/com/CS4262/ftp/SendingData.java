@@ -11,11 +11,14 @@ public class SendingData implements Runnable{
 
     private final Logger LOG = Logger.getLogger(SendingData.class.getName());
 
+    private String fileSeparator = System.getProperty("file.separator");
     private String userName;
 
+    private String rootFolder;
     public SendingData(Socket client, String userName) {
         this.clientSocket = client;
         this.userName = userName;
+        this.rootFolder = "." + fileSeparator + this.userName;
     }
 
     @Override
@@ -26,7 +29,7 @@ public class SendingData implements Runnable{
             DataInputStream dIn = new DataInputStream(clientSocket.getInputStream());
             String fileName = dIn.readUTF();
             if (fileName != null) {
-                sendFile(createFiles(fileName));
+                sendFile(fileName);
             }
             in.close();
         } catch (IOException e) {
@@ -35,10 +38,10 @@ public class SendingData implements Runnable{
     }
 
 
-    public void sendFile(File file) {
+    public void sendFile(String fileName) {
         try {
             //handle file read
-            File myFile = file;
+            File myFile = new File(this.rootFolder + fileSeparator + fileName);
             byte[] mybytearray = new byte[(int) myFile.length()];
 
             FileInputStream fis = new FileInputStream(myFile);
@@ -56,21 +59,10 @@ public class SendingData implements Runnable{
             dos.write(mybytearray, 0, mybytearray.length);
             dos.flush();
             fis.close();
-            LOG.fine("File " + file.getName() + " sent to client.");
+            LOG.fine("File " + myFile.getName() + " sent to client.");
         } catch (Exception e) {
             LOG.severe("File does not exist!");
             e.printStackTrace();
         }
-    }
-
-    public File createFiles(String fileName) throws IOException {
-        String fileSeparator = System.getProperty("file.separator");
-        String absoluteFilePath = "." + fileSeparator + this.userName + fileSeparator + fileName;
-        File file = new File(absoluteFilePath);
-        file.getParentFile().mkdir();
-        if(file.createNewFile()){
-            LOG.fine(absoluteFilePath+" File Created");
-        }else LOG.fine("File "+absoluteFilePath+" already exists");
-        return file;
     }
 }

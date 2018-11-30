@@ -39,6 +39,7 @@ public class App {
                 String nodeIP = socket.getLocalAddress().getHostAddress();
                 System.out.println("Obtaining Host address and Port...");
                 int nodePort = getFreePort();
+                System.out.println("Node = "+nodeIP+":"+nodePort);
                 instance.setReceivingPort(nodePort);
                 instance.listening();
                 String msg = "REG " + nodeIP + " " + instance.getReceivingPort() + " " + userName;
@@ -82,29 +83,34 @@ public class App {
                             e.printStackTrace();
                         }
                         Map<UUID, List<Queries>> searchResult = UDPClient.getSearchResults();
-                        if (searchResult.get(uuid).size() != 0){
-                            instance.printSearchResults(uuid,searchResult);
+                        if(searchResult.get(uuid) != null){
+                            if (searchResult.get(uuid).size() != 0){
+                                instance.printSearchResults(uuid,searchResult);
 
-                            while(true){
-                                try{
-                                    System.out.println("\nPlease choose the file you need to download : ");
-                                    String fileOption = scanner.nextLine();
+                                while(true){
+                                    try{
+                                        System.out.println("\nPlease choose the file you need to download : ");
+                                        String fileOption = scanner.nextLine();
 
-                                    int option = Integer.parseInt(fileOption);
-                                    int resultCount = UDPClient.getFileDownloadCount();
-                                    if (option > resultCount){
-                                        System.out.println("Please give an option within the search results...");
-                                        continue;
+                                        int option = Integer.parseInt(fileOption);
+                                        int resultCount = UDPClient.getFileDownloadCount();
+                                        if (option > resultCount){
+                                            System.out.println("Please give an option within the search results...");
+                                            continue;
+                                        }
+                                        instance.getFile(option);
+                                        break;
+
+                                    } catch (NumberFormatException e){
+                                        System.out.println("Enter a valid integer indicating " +
+                                                "the file option shown above in the results...");
                                     }
-                                    instance.getFile(option);
-                                    break;
-
-                                } catch (NumberFormatException e){
-                                    System.out.println("Enter a valid integer indicating " +
-                                            "the file option shown above in the results...");
                                 }
                             }
+                        }else{
+                            System.out.println("Sorry. No files are found!!!");
                         }
+
                     } else {
                         System.out.println("Please give a valid search query!!!");
                     }

@@ -35,6 +35,8 @@ public class UDPClient {
 
 //    private long lastPingTime;
 //    private static Map<String, Long> pingTimes = new HashMap<String, Long>();
+//    private static final Object lastPingLock = new Object();
+//    private static final Object pingTimesLock = new Object();
 
     private UDPClient() {
 
@@ -43,7 +45,7 @@ public class UDPClient {
     public static UDPClient getInstance() {
         return InstanceHolder.instance;
     }
-    private static FileCollection files = FileCollection.getInstance();
+    private static FileCollection files;
     private static QueryCollection queries = QueryCollection.getInstance();
 
     public static Node getCurrentNode() { return currentNode;}
@@ -89,9 +91,10 @@ public class UDPClient {
         int nodePort = Integer.parseInt(tokens.nextToken());
         String userName = tokens.nextToken();
         currentNode = new Node(nodeIP, nodePort, userName);
+        files = FileCollection.getInstance(currentNode.getUsername());
         try {
             String result = sendReceiveUDP(msg,BootStrapServer);
-//            System.out.println(result);
+            System.out.println(result);
             StringTokenizer tokenizer = new StringTokenizer(result, " ");
             tokenizer.nextToken();
             String command = tokenizer.nextToken();
@@ -190,6 +193,8 @@ public class UDPClient {
         if (success) {
             System.out.println("Left successfully!");
             currentNode = null;
+//            lastPingTime = Long.parseLong(null);
+//            pingTimes = new HashMap<String, Long>();
         }
         return success;
     }
@@ -202,25 +207,37 @@ public class UDPClient {
             @Override
             public void run() {
                 while (true) {
-//                    if ((System.currentTimeMillis()-lastPingTime) > Constants.PING_INTERVAL){
-//                        try {
-//                            checkPeersAreAlive();
-//                            lastPingTime = System.currentTimeMillis();
-//                        } catch (Exception e) {
-//                            e.printStackTrace();
+//                    synchronized (lastPingLock){
+//                        if ((System.currentTimeMillis()-lastPingTime) > Constants.PING_INTERVAL){
+//                            try {
+//                                checkPeersAreAlive();
+//                                lastPingTime = System.currentTimeMillis();
+//                            } catch (Exception e) {
+//                                e.printStackTrace();
+//                            }
 //                        }
 //                    }
-//                    for (String key : pingTimes.keySet()) {
-//                        System.out.println("ping time Key : "+ key + "=" + pingTimes.get(key));
-//                        if(System.currentTimeMillis() - pingTimes.get(key)> Constants.PING_TIMEOUT){
-//                            StringTokenizer tokenizer = new StringTokenizer(key, ":");
-//                            String nodeIP = tokenizer.nextToken();
-//                            int nodePort = Integer.parseInt(tokenizer.nextToken());
-//                            Node detail = new Node(nodeIP, nodePort);
-//                            peers.remove(detail);
+//
+//                    synchronized (pingTimesLock){
+//                        Map<String, Node> nodeToRemove = new HashMap<String, Node>();
+//                        for (String key : pingTimes.keySet()) {
+//                            if(System.currentTimeMillis() - pingTimes.get(key)> Constants.PING_TIMEOUT){
+//                                System.out.println("ping timeout Key : "+ key + "=" + pingTimes.get(key));
+//                                System.out.println("Time Difference : "+ (System.currentTimeMillis() - pingTimes.get(key)) + "=" + Constants.PING_TIMEOUT);
+//                                StringTokenizer tokenizer = new StringTokenizer(key, ":");
+//                                String nodeIP = tokenizer.nextToken();
+//                                int nodePort = Integer.parseInt(tokenizer.nextToken());
+//                                Node detail = new Node(nodeIP, nodePort);
+//                                nodeToRemove.put(key,detail);
+//
+//                            }
+//                        }
+//                        for (String key: nodeToRemove.keySet()) {
+//                            peers.remove(nodeToRemove.get(key));
 //                            pingTimes.remove(key);
 //                        }
 //                    }
+//
 //                    if(peers.size()<Constants.MIN_NEIGHBOURS){
 //                        try {
 //                            askPeers();
@@ -372,8 +389,11 @@ public class UDPClient {
                 Node detail = new Node(nodeIP, nodePort);
                 String key = nodeIP+":"+nodePort;
 //                System.out.println("Alive ok received : "+key);
-//                if(pingTimes.get(key) != null){
-//                    pingTimes.put(key,System.currentTimeMillis());
+//                synchronized (pingTimesLock){
+//                    if(pingTimes.get(key) != null){
+////                        System.out.println("ping update Key : "+ key + "=" + pingTimes.get(key));
+//                        pingTimes.put(key,System.currentTimeMillis());
+//                    }
 //                }
                 if (reply != 0) {
                     peers.remove(detail);
@@ -389,7 +409,9 @@ public class UDPClient {
                     if(nodeIP.equals(peer.getNodeIP()) && nodePort == peer.getNodePort()){
                         continue;
                     }else{
+                        System.out.println("Pong Send");
                         String replymsg = String.format(Constants.PONG_FORMAT, peer.getNodeIP(), peer.getNodePort());
+                        System.out.println(replymsg);
                         send(detail,replymsg);
                         break;
                     }
@@ -488,7 +510,7 @@ public class UDPClient {
     }
 
     public static UUID find(String query) throws Exception {
-        System.out.println("\nStarted time for searching " + query + " in millisec " + System.currentTimeMillis() );
+        System.out.println("\nSearching started... : " + query);
         UUID randomUUID = UUID.randomUUID();
         sendUDP("SER " + randomUUID + " " + currentNode.getNodeIP() + " " + currentNode.getNodePort() + " " + query + " " + 0,currentNode);
         getInstance().numOfSendMessages++;
@@ -532,7 +554,8 @@ public class UDPClient {
             System.out.println("Waiting for file download...");
             Thread.sleep(Constants.FILE_DOWNLOAD_TIMEOUT);
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Could not reach the Node!");
+//            e.printStackTrace();
         }
     }
 
@@ -561,7 +584,7 @@ public class UDPClient {
 
             ArrayList<String> row1 = new ArrayList<String>();
             row1.add("" + fileIndex);
-            row1.add(query.getFileName());
+            row1.add(query.getFileName().replace("-", " "));
             row1.add(query.getFileOwnerIP() + ":" + query.getFileOwnerPort());
             row1.add("" + query.getNoOfHops());
 
@@ -603,7 +626,9 @@ public class UDPClient {
 //        if (!Objects.isNull(currentNode)) {
 //            for (Node peer : peers) {
 //                send(peer, Constants.ALIVE + " "+currentNode.getNodeIP() + " " + currentNode.getNodePort());
-//                pingTimes.put(peer.getNodeIP()+":"+peer.getNodePort(),System.currentTimeMillis());
+//                synchronized (pingTimesLock){
+//                    pingTimes.put(peer.getNodeIP()+":"+peer.getNodePort(),System.currentTimeMillis());
+//                }
 //            }
 //        }
 //    }
@@ -646,7 +671,7 @@ public class UDPClient {
         System.out.println("\nAvailable Files : ");
         for (int i = 0; i < files.getFiles().size(); i++) {
             int id = i + 1;
-            System.out.println("File No " + id + ":" + files.getFiles().get(i));
+            System.out.println("File No " + id + ":" + files.getFiles().get(i).replace(" ", "-"));
         }
     }
 
