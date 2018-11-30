@@ -12,7 +12,7 @@ public class Queries {
     private int fileOwnerPort;
     private String fileRequesterIP;
     private int fileRequesterPort;
-    private List<String> files;
+    private String fileName;
     private int noOfHops;
 
     public UUID getUuid() {
@@ -55,13 +55,9 @@ public class Queries {
         this.fileRequesterPort = fileRequesterPort;
     }
 
-    public List<String> getFiles() {
-        return files;
-    }
+    public String getFileName() { return fileName;}
 
-    public void setFiles(List<String> files) {
-        this.files = files;
-    }
+    public void setFileName(String filesName) { this.fileName = filesName; }
 
     public int getNoOfHops() {
         return noOfHops;

@@ -4,6 +4,7 @@ import com.CS4262.core.UDPClient;
 import com.CS4262.core.Node;
 import com.CS4262.common.Constants;
 import com.CS4262.common.FileCollection;
+import com.CS4262.store.Queries;
 //
 //import spark.QueryParamsMap;
 //import spark.Request;
@@ -15,10 +16,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.SocketException;
-import java.util.Properties;
-import java.util.Random;
-import java.util.Scanner;
-import java.util.UUID;
+import java.util.*;
 
 //import static com.CS4262.util.ResponseUtil.json;
 //import static spark.Spark.get;
@@ -63,6 +61,7 @@ public class App {
             }
             Scanner scanner = new Scanner(System.in);
             Node currentNode = UDPClient.getCurrentNode();
+
             while(true){
                 System.out.println("\n("+currentNode.getNodeIP()+":"+currentNode.getNodePort()+") Choose what do you want to do below : ");
                 System.out.println("1-Do a search  2-Print neighbors(peers)  3-Print available files  4-Exit the network");
@@ -75,33 +74,37 @@ public class App {
                     String searchQuery = scanner.nextLine();
 
                     if (searchQuery != null && !searchQuery.equals("")){
-                        UDPClient.find(searchQuery);
+                        UUID uuid = null;
+                        try {
+                            uuid = UDPClient.find(searchQuery);
+                            Thread.sleep(Constants.SEARCH_TIMEOUT);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        Map<UUID, List<Queries>> searchResult = UDPClient.getSearchResults();
+                        if (searchResult.get(uuid).size() != 0){
+                            instance.printSearchResults(uuid,searchResult);
 
-//                        if (results != 0){
-//
-//                            while(true){
-//
-//                                try{
-//                                    System.out.println("\nPlease choose the file you need to download : ");
-//                                    String fileOption = scanner.nextLine();
-//
-//                                    int option = Integer.parseInt(fileOption);
-//
-//                                    if (option > results){
-//                                        System.out.println("Please give an option within the search results...");
-//                                        continue;
-//                                    }
-//
-//                                    node.getFile(option);
-//                                    break;
-//
-//                                } catch (NumberFormatException e){
-//                                    System.out.println("Enter a valid integer indicating " +
-//                                            "the file option shown above in the results...");
-//                                }
-//                            }
-//                        }
+                            while(true){
+                                try{
+                                    System.out.println("\nPlease choose the file you need to download : ");
+                                    String fileOption = scanner.nextLine();
 
+                                    int option = Integer.parseInt(fileOption);
+                                    int resultCount = UDPClient.getFileDownloadCount();
+                                    if (option > resultCount){
+                                        System.out.println("Please give an option within the search results...");
+                                        continue;
+                                    }
+                                    instance.getFile(option);
+                                    break;
+
+                                } catch (NumberFormatException e){
+                                    System.out.println("Enter a valid integer indicating " +
+                                            "the file option shown above in the results...");
+                                }
+                            }
+                        }
                     } else {
                         System.out.println("Please give a valid search query!!!");
                     }
@@ -112,15 +115,17 @@ public class App {
                     UDPClient.printFiles();
 
                 }else if (commandOption.equals("4")){
-                    instance.unregister();
+                    try {
+                        instance.unregister();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                     System.exit(0);
                     break;
                 } else {
                     System.out.println("Please enter a valid option...");
                 }
-
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         }

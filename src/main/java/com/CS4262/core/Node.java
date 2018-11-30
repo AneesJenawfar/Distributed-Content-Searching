@@ -1,6 +1,7 @@
 package com.CS4262.core;
 
 import com.CS4262.common.Constants;
+import com.CS4262.ftp.FTPServer;
 //import com.google.gson.Gson;
 
 import java.io.IOException;
@@ -19,32 +20,20 @@ public class Node {
     private String nodeIP;
     private int nodePort;
     private String username;
-
-//    public Node (String username) throws Exception {
-//
-//        try (final DatagramSocket socket = new DatagramSocket()){
-//            socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
-//            this.nodeIP = socket.getLocalAddress().getHostAddress();
-//
-//        } catch (Exception e){
-//            throw new RuntimeException("Could not find host address");
-//        }
-//
-//        this.username = username;
-//        this.nodePort = getFreePort();
-//
-//    }
-
+    private FTPServer ftpServer;
 
     public Node(String nodeIP, int nodePort) {
         this.nodeIP = nodeIP;
         this.nodePort = nodePort;
     }
 
-    public Node(String nodeIP, int nodePort, String username) {
+    public Node(String nodeIP, int nodePort, String username) throws Exception {
         this.nodeIP = nodeIP;
         this.nodePort = nodePort;
         this.username = username;
+        this.ftpServer = new FTPServer(this.nodePort + Constants.FTP_PORT_OFFSET, username);
+        Thread t = new Thread(ftpServer);
+        t.start();
     }
 
     public String getNodeIP() {
@@ -70,7 +59,6 @@ public class Node {
     public void setUsername(String username) {
         this.username = username;
     }
-
 
     @Override
     public boolean equals(Object o) {

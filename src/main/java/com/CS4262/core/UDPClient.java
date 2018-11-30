@@ -3,7 +3,9 @@ package com.CS4262.core;
 import com.CS4262.common.Constants;
 import com.CS4262.common.FileCollection;
 import com.CS4262.common.QueryCollection;
+import com.CS4262.ftp.FTPClient;
 import com.CS4262.store.Queries;
+import com.CS4262.util.ConsoleTable;
 
 import java.io.IOException;
 import java.net.*;
@@ -19,9 +21,10 @@ public class UDPClient {
     }
 
     private static final List<Node> peers = new ArrayList<>();
-    private static final List<Queries> full_query_stores = new ArrayList<>();
+//    private static final List<Queries> full_query_stores = new ArrayList<>();
     private static final List<UUID> previous_uuid = new ArrayList<>();
-
+    private static Map<UUID, List<Queries>> searchResults = new HashMap<>();
+    private static Map<Integer, Queries> fileDownloadOptions;
     private int numOfSendMessages;
     private int numOfReceivedMessages;
 
@@ -29,6 +32,9 @@ public class UDPClient {
     private static Node currentNode;
     private int SendingPort;
     private int ReceivingPort;
+
+//    private long lastPingTime;
+//    private static Map<String, Long> pingTimes = new HashMap<String, Long>();
 
     private UDPClient() {
 
@@ -40,9 +46,7 @@ public class UDPClient {
     private static FileCollection files = FileCollection.getInstance();
     private static QueryCollection queries = QueryCollection.getInstance();
 
-    public static Node getCurrentNode() {
-        return currentNode;
-    }
+    public static Node getCurrentNode() { return currentNode;}
 
     public static List<Node> getPeers() {
         return peers;
@@ -52,13 +56,9 @@ public class UDPClient {
         return files;
     }
 
-    public int getSendingPort() {
-        return SendingPort;
-    }
+    public static Map<UUID, List<Queries>> getSearchResults() { return searchResults; }
 
-    public void setSendingPort(int sendingPort) {
-        SendingPort = sendingPort;
-    }
+    public static int getFileDownloadCount(){ return fileDownloadOptions.size(); }
 
     public int getReceivingPort() {
         return ReceivingPort;
@@ -72,16 +72,8 @@ public class UDPClient {
         return numOfSendMessages;
     }
 
-    public void setNumOfSendMessages(int numOfSendMessages) {
-        this.numOfSendMessages = numOfSendMessages;
-    }
-
     public int getNumOfReceivedMessages() {
         return numOfReceivedMessages;
-    }
-
-    public void setNumOfReceivedMessages(int numOfReceivedMessages) {
-        this.numOfReceivedMessages = numOfReceivedMessages;
     }
 
     public synchronized boolean register(String msg, String serverIP, int serverPort) throws Exception {
@@ -114,7 +106,7 @@ public class UDPClient {
                         System.out.println("Second Node is Registered.");
                         String ipAddress = tokenizer.nextToken();
                         int portNumber = Integer.parseInt(tokenizer.nextToken());
-                        Node detail = new Node(ipAddress, portNumber, " ");
+                        Node detail = new Node(ipAddress, portNumber);
                         join(detail);
                         send(detail, JOIN_MESSAGE);
                         break;
@@ -158,6 +150,7 @@ public class UDPClient {
                         currentNode = null;
                         return false;
                 }
+//                lastPingTime = System.currentTimeMillis();
                 System.out.println("Node = "+nodeIP+":"+nodePort);
                 printFiles();
                 printPeers();
@@ -199,6 +192,219 @@ public class UDPClient {
             currentNode = null;
         }
         return success;
+    }
+
+    public void listening() throws SocketException {
+        DatagramSocket rec_socket = new DatagramSocket(ReceivingPort);
+        rec_socket.setSoTimeout(1000);
+
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+//                    if ((System.currentTimeMillis()-lastPingTime) > Constants.PING_INTERVAL){
+//                        try {
+//                            checkPeersAreAlive();
+//                            lastPingTime = System.currentTimeMillis();
+//                        } catch (Exception e) {
+//                            e.printStackTrace();
+//                        }
+//                    }
+//                    for (String key : pingTimes.keySet()) {
+//                        System.out.println("ping time Key : "+ key + "=" + pingTimes.get(key));
+//                        if(System.currentTimeMillis() - pingTimes.get(key)> Constants.PING_TIMEOUT){
+//                            StringTokenizer tokenizer = new StringTokenizer(key, ":");
+//                            String nodeIP = tokenizer.nextToken();
+//                            int nodePort = Integer.parseInt(tokenizer.nextToken());
+//                            Node detail = new Node(nodeIP, nodePort);
+//                            peers.remove(detail);
+//                            pingTimes.remove(key);
+//                        }
+//                    }
+//                    if(peers.size()<Constants.MIN_NEIGHBOURS){
+//                        try {
+//                            askPeers();
+//                        } catch (Exception e) {
+//                            e.printStackTrace();
+//                        }
+//                    }
+
+                    byte[] buffer = new byte[65536];
+                    DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
+                    try {
+                        rec_socket.receive(incoming);
+                        byte[] data = incoming.getData();
+                        String s = new String(data, 0, incoming.getLength());
+//                        System.out.println("Received Data : "+s);
+                        String reply = UDPClient.process(s);
+                        if (reply != null) {
+                            synchronized (getInstance().getPeers()) {
+                                sendUDP(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
+                            }
+                        }
+                    } catch (SocketTimeoutException e) {
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+        t.start();
+    }
+
+    public static String process(String msg) throws Exception {
+        StringTokenizer tokenizer = new StringTokenizer(msg, " ");
+        tokenizer.nextToken();
+        String command = tokenizer.nextToken();
+//        System.out.println("received msg : "+msg);
+        synchronized (peers) {
+            if (Objects.equals(command, Constants.JOIN)) {
+                String NodeIP = tokenizer.nextToken();
+                int NodePort = Integer.parseInt(tokenizer.nextToken());
+                Node node = new Node(NodeIP, NodePort);
+                int reply = join(node);
+                if (reply == 0) {
+//                    System.out.println("Successfully Joined");
+//                    printPeers();
+                } else if (reply == 9999) {
+                    System.out.println("\n"+currentNode.getNodeIP()+":"+currentNode.getNodePort()+" already joined with "+
+                            NodeIP+":"+NodePort);
+                }
+                return Constants.JOINOK + " " + reply;
+            } else if (Objects.equals(command, Constants.LEAVE)) {
+                String NodeIP = tokenizer.nextToken();
+                int NodePort = Integer.parseInt(tokenizer.nextToken());
+                Node node = new Node(NodeIP, NodePort);
+                int reply = leave(node);
+                if (reply == 0) {
+//                    System.out.println("Successfully Leave");
+                } else if (reply == 9999) {
+                    System.out.println("Leave with error");
+                }
+                return Constants.LEAVEOK + " " + reply;
+            } else if (Objects.equals(command, Constants.ALIVE)) {
+                String NodeIP = tokenizer.nextToken();
+                int NodePort = Integer.parseInt(tokenizer.nextToken());
+                Node node = new Node(NodeIP, NodePort);
+//                System.out.println("Alive OK : "+NodeIP+":"+NodePort);
+                String reply = checkAlive();
+                send(node,reply);
+            }
+            else if (Objects.equals(command, Constants.SEARCH)) {
+//                System.out.println("Search found : " + msg);
+                String reply = "";
+                UUID uuid = UUID.fromString(tokenizer.nextToken());
+                getInstance().numOfReceivedMessages++;
+                if (previous_uuid.contains(uuid)){
+
+                }else{
+                    previous_uuid.add(uuid);
+                    String NodeIP = tokenizer.nextToken();
+                    int NodePort = Integer.parseInt(tokenizer.nextToken());
+                    int count = (tokenizer.countTokens());
+
+                    String query = tokenizer.nextToken();
+                    count--;
+                    while (count - 1 > 0) {
+                        String query_single = tokenizer.nextToken();
+                        query += "-" + query_single;
+                        count--;
+                    }
+
+                    int hops = Integer.parseInt(tokenizer.nextToken());
+                    Node node = new Node(NodeIP, NodePort);
+                    reply = search(query, node, hops,uuid);
+
+                }
+
+                return reply;
+            }else if (Objects.equals(command, Constants.SEROK)) {
+                getInstance().numOfReceivedMessages++;
+//                System.out.println("[INFO] : Search result Found: "+msg);
+                UUID uuid = UUID.fromString(tokenizer.nextToken());
+                int noOfFiles = Integer.parseInt(tokenizer.nextToken());
+                String nodeIP = tokenizer.nextToken();
+                int nodePort = Integer.parseInt(tokenizer.nextToken());
+                int hops = Integer.parseInt(tokenizer.nextToken());
+                int count = noOfFiles;
+                List<String> results = new ArrayList<>();
+                while (count > 0) {
+                    String file = tokenizer.nextToken();
+                    results.add(file);
+                    count--;
+                }
+                String requestIP = tokenizer.nextToken();
+                int requestPort = Integer.parseInt(tokenizer.nextToken());
+                if(requestIP.equals(currentNode.getNodeIP()) && requestPort == currentNode.getNodePort()){
+                    for (String filename: results) {
+//                        Node detail = new Node(nodeIP, nodePort);
+                        Queries queryStore = new Queries();
+                        queryStore.setUuid(uuid);
+                        queryStore.setFileOwnerIP(nodeIP);
+                        queryStore.setFileOwnerPort(nodePort);
+                        queryStore.setFileRequesterIP(requestIP);
+                        queryStore.setFileRequesterPort(requestPort);
+                        queryStore.setFileName(filename);
+                        queryStore.setNoOfHops(hops);
+//                        if (!full_query_stores.contains(queryStore)) {
+//                            full_query_stores.add(queryStore);
+//                        }
+                        List<Queries> result = searchResults.get(uuid);
+                        if(result != null){
+                            result.add(queryStore);
+                        }else{
+                            result = new ArrayList<Queries>();
+                            result.add(queryStore);
+                        }
+                        searchResults.put(uuid,result);
+                    }
+//                    printResult(queryStore);
+                }else{
+                    for(Node peer: peers){
+                        sendUDP(msg,peer);
+                        getInstance().numOfSendMessages++;
+                    }
+                }
+            } else if (Objects.equals(command, Constants.AVEOK)) {
+                int reply = Integer.parseInt(tokenizer.nextToken());
+                String nodeIP = tokenizer.nextToken();
+                int nodePort = Integer.parseInt(tokenizer.nextToken());
+                Node detail = new Node(nodeIP, nodePort);
+                String key = nodeIP+":"+nodePort;
+//                System.out.println("Alive ok received : "+key);
+//                if(pingTimes.get(key) != null){
+//                    pingTimes.put(key,System.currentTimeMillis());
+//                }
+                if (reply != 0) {
+                    peers.remove(detail);
+                }
+                printPeers();
+
+            }else if (Objects.equals(command, Constants.PING)) {
+                System.out.println("ping received");
+                String nodeIP = tokenizer.nextToken();
+                int nodePort = Integer.parseInt(tokenizer.nextToken());
+                Node detail = new Node(nodeIP,nodePort);
+                for (Node peer: peers) {
+                    if(nodeIP.equals(peer.getNodeIP()) && nodePort == peer.getNodePort()){
+                        continue;
+                    }else{
+                        String replymsg = String.format(Constants.PONG_FORMAT, peer.getNodeIP(), peer.getNodePort());
+                        send(detail,replymsg);
+                        break;
+                    }
+                }
+            }else if (Objects.equals(command, Constants.PONG)) {
+                System.out.println("pong received");
+                String JOIN_MESSAGE = "JOIN " + currentNode.getNodeIP() + " " + currentNode.getNodePort();
+                String nodeIP = tokenizer.nextToken();
+                int nodePort = Integer.parseInt(tokenizer.nextToken());
+                Node detail = new Node(nodeIP, nodePort);
+                join(detail);
+                send(detail, JOIN_MESSAGE);
+            }
+        }
+        return null;
     }
 
     private synchronized void askPeersToJoin() throws Exception {
@@ -266,66 +472,11 @@ public class UDPClient {
         return s;
     }
 
-    public static synchronized int join(Node peerNode) {
-        int reply = 9999;
-        if (!peers.contains(peerNode)) {
-            peers.add(peerNode);
-            reply = 0;
-        }
-        return reply;
-    }
-
-    public static synchronized int leave(Node peerNode) {
-        int reply = 9999;
-        if (peers.contains(peerNode)) {
-            peers.remove(peerNode);
-            reply = 0;
-        }
-        return reply;
-    }
-
-    public void listening() throws SocketException {
-        DatagramSocket rec_socket = new DatagramSocket(ReceivingPort);
-        rec_socket.setSoTimeout(1000);
-
-        Thread t = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    byte[] buffer = new byte[65536];
-                    DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
-                    try {
-                        rec_socket.receive(incoming);
-                        byte[] data = incoming.getData();
-                        String s = new String(data, 0, incoming.getLength());
-                        String reply = UDPClient.process(s);
-                        if (reply != null) {
-                            synchronized (getInstance().getPeers()) {
-                                sendUDP(reply, new Node(incoming.getAddress().toString().substring(1), incoming.getPort()));
-                            }
-                        }
-                    } catch (SocketTimeoutException e) {
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        });
-        t.start();
-    }
-
-    public static void find(String query) throws Exception {
-        System.out.println("\nStarted time for searching " + query + " in millisec " + System.currentTimeMillis() );
-        UUID randomUUID = UUID.randomUUID();
-        sendUDP("SER " + randomUUID + " " + currentNode.getNodeIP() + " " + currentNode.getNodePort() + " " + query + " " + 0,currentNode);
-        getInstance().numOfSendMessages++;
-    }
-
     public static void sendUDP(String msg, Node node) throws IOException {
 
         synchronized (UDPClient.getInstance()) {
             msg = String.format("%04d", (msg.length() + 5)) + " " + msg;
-            System.out.println("From sendUDP : "+msg);
+//            System.out.println("From sendUDP : "+msg);
             DatagramSocket sock = new DatagramSocket();
             InetAddress node_address = InetAddress.getByName(node.getNodeIP());
             byte[] buffer = msg.getBytes();
@@ -336,153 +487,13 @@ public class UDPClient {
 
     }
 
-    public static String process(String msg) throws Exception {
-        StringTokenizer tokenizer = new StringTokenizer(msg, " ");
-        tokenizer.nextToken();
-        String command = tokenizer.nextToken();
-        System.out.println("received msg : "+msg);
-        synchronized (peers) {
-            if (Objects.equals(command, Constants.JOIN)) {
-                String NodeIP = tokenizer.nextToken();
-                int NodePort = Integer.parseInt(tokenizer.nextToken());
-                Node node = new Node(NodeIP, NodePort);
-                int reply = join(node);
-                if (reply == 0) {
-//                    System.out.println("Successfully Joined");
-//                    printPeers();
-                } else if (reply == 9999) {
-                    System.out.println("\n"+currentNode.getNodeIP()+":"+currentNode.getNodePort()+" already joined with "+
-                            NodeIP+":"+NodePort);
-                }
-                return Constants.JOINOK + " " + reply;
-            } else if (Objects.equals(command, Constants.LEAVE)) {
-                String NodeIP = tokenizer.nextToken();
-                int NodePort = Integer.parseInt(tokenizer.nextToken());
-                Node node = new Node(NodeIP, NodePort);
-                int reply = leave(node);
-                if (reply == 0) {
-//                    System.out.println("Successfully Leave");
-                } else if (reply == 9999) {
-                    System.out.println("Leave with error");
-                }
-                return Constants.LEAVEOK + " " + reply;
-            } else if (Objects.equals(command, Constants.ALIVE)) {
-                String NodeIP = tokenizer.nextToken();
-                int NodePort = Integer.parseInt(tokenizer.nextToken());
-                Node node = new Node(NodeIP, NodePort);
-                if (Objects.equals(currentNode.getNodeIP(), node.getNodeIP()) & currentNode.getNodePort() == node.getNodePort()) {
-                    String reply = checkAlive();
-                    return reply;
-                } else {
-                    return null;
-                }
-            }
-            else if (Objects.equals(command, Constants.SEARCH)) {
-                System.out.println("Search found : " + msg);
-                String reply = "";
-                UUID uuid = UUID.fromString(tokenizer.nextToken());
-                getInstance().numOfReceivedMessages++;
-                if (previous_uuid.contains(uuid)){
-
-                }else{
-                    previous_uuid.add(uuid);
-                    String NodeIP = tokenizer.nextToken();
-                    int NodePort = Integer.parseInt(tokenizer.nextToken());
-                    int count = (tokenizer.countTokens());
-
-                    String query = tokenizer.nextToken();
-                    count--;
-                    while (count - 1 > 0) {
-                        String query_single = tokenizer.nextToken();
-                        query += "-" + query_single;
-                        count--;
-                    }
-
-                    int hops = Integer.parseInt(tokenizer.nextToken());
-                    Node node = new Node(NodeIP, NodePort);
-                    reply = search(query, node, hops,uuid);
-
-                }
-
-                return reply;
-            }else if (Objects.equals(command, Constants.SEROK)) {
-                getInstance().numOfReceivedMessages++;
-                System.out.println("[INFO] : Search result Found: "+msg);
-                UUID uuid = UUID.fromString(tokenizer.nextToken());
-                int noOfFiles = Integer.parseInt(tokenizer.nextToken());
-                String nodeIP = tokenizer.nextToken();
-                int nodePort = Integer.parseInt(tokenizer.nextToken());
-                int hops = Integer.parseInt(tokenizer.nextToken());
-                int count = noOfFiles;
-                List<String> results = new ArrayList<>();
-                while (count > 0) {
-                    String file = tokenizer.nextToken();
-                    results.add(file);
-                    count--;
-                }
-                String requestIP = tokenizer.nextToken();
-                int requestPort = Integer.parseInt(tokenizer.nextToken());
-                if(requestIP.equals(currentNode.getNodeIP()) && requestPort == currentNode.getNodePort()){
-//                    if(requestPort == currentNode.getNodePort()){
-                    Node detail = new Node(nodeIP, nodePort);
-                    Queries queryStore = new Queries();
-                    queryStore.setUuid(uuid);
-                    queryStore.setFileOwnerIP(nodeIP);
-                    queryStore.setFileOwnerPort(nodePort);
-                    queryStore.setFileRequesterIP(requestIP);
-                    queryStore.setFileRequesterPort(requestPort);
-                    queryStore.setFiles(results);
-                    queryStore.setNoOfHops(hops);
-                    if (!full_query_stores.contains(queryStore)) {
-                        full_query_stores.add(queryStore);
-                    }
-                    printResult(queryStore);
-//                    }else{
-//                        for(Node peer: peers){
-//                            sendUDP(msg,peer);
-//                            getInstance().numOfSendMessages++;
-//                        }
-//                    }
-                }else{
-                    for(Node peer: peers){
-                        sendUDP(msg,peer);
-                        getInstance().numOfSendMessages++;
-                    }
-                }
-            } else if (Objects.equals(command, Constants.AVEOK)) {
-                int reply = Integer.parseInt(tokenizer.nextToken());
-                String nodeIP = tokenizer.nextToken();
-                int nodePort = Integer.parseInt(tokenizer.nextToken());
-                Node detail = new Node(nodeIP, nodePort);
-                if (reply != 0) {
-                    peers.remove(detail);
-                }
-                printPeers();
-            }
-        }
-        return null;
+    public static UUID find(String query) throws Exception {
+        System.out.println("\nStarted time for searching " + query + " in millisec " + System.currentTimeMillis() );
+        UUID randomUUID = UUID.randomUUID();
+        sendUDP("SER " + randomUUID + " " + currentNode.getNodeIP() + " " + currentNode.getNodePort() + " " + query + " " + 0,currentNode);
+        getInstance().numOfSendMessages++;
+        return randomUUID;
     }
-
-    public static void checkPeersAreAlive() throws Exception {
-        if (!Objects.isNull(currentNode)) {
-            for (Node peer : peers) {
-                send(peer, "AVE " + peer.getNodeIP() + " " + peer.getNodePort());
-            }
-        }
-    }
-
-    private static synchronized String checkAlive() throws Exception {
-        String  reply = Constants.AVEOK + " " + 0 + " " + currentNode.getNodeIP() + " " + currentNode.getNodePort();
-        reply = String.format("%04d", (reply.length() + 5)) + " " + reply;
-        return reply;
-    }
-
-//    public synchronized boolean kill() throws Exception {
-//        // make join request for peers....
-//        askPeersToJoin();
-//        stop();
-//        return true;
-//    }
 
     public static synchronized String search(String query, Node detail, int hops, UUID randomUUID) throws Exception {
         String reply = "";
@@ -492,7 +503,7 @@ public class UDPClient {
             for (int j = 0; j < results_current.size(); j++) {
                 result.append(" ").append(results_current.get(j));
             }
-            System.out.println("Result :"+result);
+//            System.out.println("Result :"+result);
             reply = "SEROK " + randomUUID + " " + results_current.size() + " " + currentNode.getNodeIP() + " " + currentNode.getNodePort() + " " + hops + result +
                     " " + detail.getNodeIP() + " " + detail.getNodePort();
             sendUDP(reply,detail);
@@ -511,49 +522,110 @@ public class UDPClient {
         }
     }
 
-    public static void printResults() {
-        if (full_query_stores.size() == 0) {
+    public void getFile(int fileOption) {
+        try {
+            Queries fileDetail = fileDownloadOptions.get(fileOption);
+            System.out.println("The file you requested is " + fileDetail.getFileName());
+            FTPClient ftpClient = new FTPClient(fileDetail.getFileOwnerIP(), fileDetail.getFileOwnerPort()+Constants.FTP_PORT_OFFSET,
+                    fileDetail.getFileName());
+
+            System.out.println("Waiting for file download...");
+            Thread.sleep(Constants.FILE_DOWNLOAD_TIMEOUT);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void printSearchResults(UUID uuid, Map<UUID, List<Queries>> searchResults){
+
+        System.out.println("\nFile search results : ");
+
+        ArrayList<String> headers = new ArrayList<String>();
+        headers.add("Option No");
+        headers.add("FileName");
+        headers.add("Source");
+        headers.add("Hop count");
+
+        ArrayList<ArrayList<String>> content = new ArrayList<ArrayList<String>>();
+
+        int fileIndex = 1;
+
+        fileDownloadOptions = new HashMap<Integer, Queries>();
+        List<Queries> results = (List<Queries>) searchResults.get(uuid);
+        if (results == null){
+            System.out.println("Sorry. No files are found!!!");
             return;
         }
-        System.out.println("Available Search Results : ");
-        System.out.println("[INFO] : Displaying Results");
-        for (int i = 0; i < full_query_stores.size(); i++) {
-            int id = i + 1;
-            Queries queryStore = full_query_stores.get(i);
-            System.out.println("[QueryStore ID] : " + id);
-            printResult(queryStore);
+        for (Queries query : results){
+            fileDownloadOptions.put(fileIndex, query);
+
+            ArrayList<String> row1 = new ArrayList<String>();
+            row1.add("" + fileIndex);
+            row1.add(query.getFileName());
+            row1.add(query.getFileOwnerIP() + ":" + query.getFileOwnerPort());
+            row1.add("" + query.getNoOfHops());
+
+            content.add(row1);
+
+            fileIndex++;
+
+
+        }
+        ConsoleTable ct = new ConsoleTable(headers,content);
+        ct.printTable();
+    }
+
+    public static synchronized int join(Node peerNode) {
+        int reply = 9999;
+        if (!peers.contains(peerNode)) {
+            peers.add(peerNode);
+            reply = 0;
+        }
+        return reply;
+    }
+
+    public static synchronized int leave(Node peerNode) {
+        int reply = 9999;
+        if (peers.contains(peerNode)) {
+            peers.remove(peerNode);
+            reply = 0;
+        }
+        return reply;
+    }
+
+    private static synchronized String checkAlive() throws Exception {
+        String  reply = Constants.AVEOK + " " + 0 + " " + currentNode.getNodeIP() + " " + currentNode.getNodePort();
+//        reply = String.format("%04d", (reply.length() + 5)) + " " + reply;
+        return reply;
+    }
+
+//    public static void checkPeersAreAlive() throws Exception {
+//        if (!Objects.isNull(currentNode)) {
+//            for (Node peer : peers) {
+//                send(peer, Constants.ALIVE + " "+currentNode.getNodeIP() + " " + currentNode.getNodePort());
+//                pingTimes.put(peer.getNodeIP()+":"+peer.getNodePort(),System.currentTimeMillis());
+//            }
+//        }
+//    }
+
+    public static void askPeers() throws Exception {
+        for (Node peer : peers) {
+            String msg = String.format(Constants.PING_FORMAT, currentNode.getNodeIP(), currentNode.getNodePort());
+            send(peer, msg);
         }
     }
 
     private static void printResult(Queries queryStore){
-        System.out.println("[Files] : " + queryStore.getFiles());
+        System.out.println("[File Name] : " + queryStore.getFileName());
         System.out.println("[Owner Details] : " + queryStore.getFileOwnerIP() + " : " + queryStore.getFileOwnerPort());
         System.out.println("[Hops] : " + queryStore.getNoOfHops());
         System.out.println("[Time Query arrived] : "+ System.currentTimeMillis());
     }
 
-
     public static void searchQueries() throws Exception {
         for(String query: queries.getQueries()){
             find(query);
         }
-    }
-
-    public static QueryCollection getQueries() {
-        return queries;
-    }
-
-    public static void setQueries(QueryCollection queries) {
-        UDPClient.queries = queries;
-    }
-
-    public String getResults() {
-        StringBuilder full_res = new StringBuilder();
-        for (Queries r : full_query_stores) {
-            String str = r.toString();
-            full_res.append("[ ").append(str).append(" ]");
-        }
-        return full_res.toString();
     }
 
     public static void printPeers() {
@@ -583,4 +655,11 @@ public class UDPClient {
         System.out.println("No of Received Messages " + getInstance().numOfReceivedMessages);
     }
 
+
+//    public synchronized boolean kill() throws Exception {
+//        // make join request for peers....
+//        askPeersToJoin();
+//        stop();
+//        return true;
+//    }
 }

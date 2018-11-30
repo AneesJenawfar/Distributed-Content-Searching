@@ -20,7 +20,18 @@ public class Constants {
     public static final String AVEOK = "AVEOK";
     public static final String SEARCH = "SER";
     public static final String SEROK = "SEROK";
+    public static final String PING_FORMAT = "PING %s %s";
+    public static final String PING = "PING";
+    public static final String PONG_FORMAT = "PONG %s %s";
+    public static final String PONG = "PONG";
+
     public static final int TIMEOUT_REG = 10000;
+    public static final int SEARCH_TIMEOUT = 3000;
+    public static final int FILE_DOWNLOAD_TIMEOUT = 2000;
+    public static final int FTP_PORT_OFFSET = 100;
+
+    public static final int PING_TIMEOUT = 3000;
+    public static final int PING_INTERVAL = 8000;
 
     public static final int MIN_NEIGHBOURS = 2;
     public static final int MAX_NEIGHBOURS = 4;
