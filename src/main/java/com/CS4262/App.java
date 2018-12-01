@@ -65,7 +65,7 @@ public class App {
 
             while(true){
                 System.out.println("\n("+currentNode.getNodeIP()+":"+currentNode.getNodePort()+") Choose what do you want to do below : ");
-                System.out.println("1-Do a search  2-Print neighbors(peers)  3-Print available files  4-Exit the network");
+                System.out.println("1-Do a search  2-Print neighbors(peers)  3-Print available files  \n4-Message Counts  5-Exit the network");
                 System.out.println("\nPlease enter the option : ");
 
                 String commandOption = scanner.nextLine();
@@ -98,6 +98,9 @@ public class App {
                                             System.out.println("Please give an option within the search results...");
                                             continue;
                                         }
+                                        if(option == 0){
+                                            break;
+                                        }
                                         instance.getFile(option);
                                         break;
 
@@ -121,6 +124,10 @@ public class App {
                     UDPClient.printFiles();
 
                 }else if (commandOption.equals("4")){
+                    System.out.println("\nSend Messages :"+ (UDPClient.getNumOfSendMessages()));
+                    System.out.println("Received Messages :"+ (UDPClient.getNumOfReceivedMessages()));
+                    System.out.println("Total Messages :"+ (UDPClient.getNumOfSendMessages()+UDPClient.getNumOfReceivedMessages()));
+                }else if (commandOption.equals("5")){
                     try {
                         instance.unregister();
                     } catch (Exception e) {

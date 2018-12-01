@@ -25,13 +25,14 @@ public class UDPClient {
     private static final List<UUID> previous_uuid = new ArrayList<>();
     private static Map<UUID, List<Queries>> searchResults = new HashMap<>();
     private static Map<Integer, Queries> fileDownloadOptions;
-    private int numOfSendMessages;
-    private int numOfReceivedMessages;
+    private static int numOfSendMessages;
+    private static int numOfReceivedMessages;
 
     private Node BootStrapServer;
     private static Node currentNode;
     private int SendingPort;
     private int ReceivingPort;
+    private static long searchStartTime;
 
 //    private long lastPingTime;
 //    private static Map<String, Long> pingTimes = new HashMap<String, Long>();
@@ -70,11 +71,11 @@ public class UDPClient {
         ReceivingPort = receivingPort;
     }
 
-    public int getNumOfSendMessages() {
+    public static int getNumOfSendMessages() {
         return numOfSendMessages;
     }
 
-    public int getNumOfReceivedMessages() {
+    public static int getNumOfReceivedMessages() {
         return numOfReceivedMessages;
     }
 
@@ -94,7 +95,7 @@ public class UDPClient {
         files = FileCollection.getInstance(currentNode.getUsername());
         try {
             String result = sendReceiveUDP(msg,BootStrapServer);
-            System.out.println(result);
+//            System.out.println(result);
             StringTokenizer tokenizer = new StringTokenizer(result, " ");
             tokenizer.nextToken();
             String command = tokenizer.nextToken();
@@ -363,6 +364,8 @@ public class UDPClient {
                         queryStore.setFileRequesterPort(requestPort);
                         queryStore.setFileName(filename);
                         queryStore.setNoOfHops(hops);
+                        long time = System.currentTimeMillis();
+                        queryStore.setTimeTaken(time-searchStartTime);
 //                        if (!full_query_stores.contains(queryStore)) {
 //                            full_query_stores.add(queryStore);
 //                        }
@@ -510,8 +513,10 @@ public class UDPClient {
     }
 
     public static UUID find(String query) throws Exception {
+        System.out.println("\nTotal Messages :"+ (getNumOfReceivedMessages() + getNumOfSendMessages()));
         System.out.println("\nSearching started... : " + query);
         UUID randomUUID = UUID.randomUUID();
+        searchStartTime = System.currentTimeMillis();
         sendUDP("SER " + randomUUID + " " + currentNode.getNodeIP() + " " + currentNode.getNodePort() + " " + query + " " + 0,currentNode);
         getInstance().numOfSendMessages++;
         return randomUUID;
@@ -567,7 +572,8 @@ public class UDPClient {
         headers.add("Option No");
         headers.add("FileName");
         headers.add("Source");
-        headers.add("Hop count");
+        headers.add("Search Time");
+        headers.add("Hop Count");
 
         ArrayList<ArrayList<String>> content = new ArrayList<ArrayList<String>>();
 
@@ -579,6 +585,7 @@ public class UDPClient {
             System.out.println("Sorry. No files are found!!!");
             return;
         }
+        long totalTime = 0;
         for (Queries query : results){
             fileDownloadOptions.put(fileIndex, query);
 
@@ -586,16 +593,20 @@ public class UDPClient {
             row1.add("" + fileIndex);
             row1.add(query.getFileName().replace("-", " "));
             row1.add(query.getFileOwnerIP() + ":" + query.getFileOwnerPort());
+            row1.add(""+query.getTimeTaken());
             row1.add("" + query.getNoOfHops());
 
             content.add(row1);
 
             fileIndex++;
-
+            totalTime = totalTime + query.getTimeTaken();
 
         }
         ConsoleTable ct = new ConsoleTable(headers,content);
         ct.printTable();
+        long latency = totalTime/results.size();
+        System.out.println("\nTotal Messages :"+ (getNumOfReceivedMessages() + getNumOfSendMessages()));
+        System.out.println("Latency : "+latency);
     }
 
     public static synchronized int join(Node peerNode) {

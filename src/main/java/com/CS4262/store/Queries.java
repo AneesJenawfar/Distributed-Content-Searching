@@ -14,6 +14,7 @@ public class Queries {
     private int fileRequesterPort;
     private String fileName;
     private int noOfHops;
+    private long timeTaken;
 
     public UUID getUuid() {
         return uuid;
@@ -67,7 +68,10 @@ public class Queries {
         this.noOfHops = noOfHops;
     }
 
-//    @Override
+    public long getTimeTaken() { return timeTaken; }
+
+    public void setTimeTaken(long timeTaken) { this.timeTaken = timeTaken; }
+    //    @Override
 //    public String toString() {
 //        return new Gson().toJson(this);
 //    }
